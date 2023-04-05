@@ -1,0 +1,19 @@
+FROM balenalib/%%BALENA_ARCH%%-debian:buster as base_os
+FROM base_os as build
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y git build-essential rtl-sdr librtlsdr-dev pkg-config usbutils libbladerf-dev libhackrf-dev liblimesuite-dev libncurses5-dev debhelper
+
+WORKDIR /opt
+RUN git clone https://github.com/flightaware/dump1090.git
+WORKDIR /opt/dump1090
+RUN dpkg-buildpackage -b --no-sign
+
+FROM base_os as final
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update 
+
+COPY --from=build /opt/dump1090-*.deb /tmp/
+WORKDIR /tmp
+RUN apt-get install -y  ./dump1090-*.deb
+
+CMD ["dump1090-fa", "--mlat", "--net", "--write-json", "/run/dump1090-fa"]

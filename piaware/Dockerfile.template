@@ -1,0 +1,66 @@
+FROM balenalib/%%BALENA_ARCH%%-debian:buster as base_os
+
+FROM base_os as build
+
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update
+RUN apt-get update && apt-get install -y git build-essential devscripts debhelper tcl8.6-dev autoconf python3-dev python3-venv libz-dev wget python3-setuptools libboost-system-dev libboost-program-options-dev libboost-regex-dev libboost-filesystem-dev patchelf libdistro-info-perl libssl-dev tcl-dev chrpath
+
+WORKDIR /opt
+RUN git clone https://github.com/flightaware/piaware_builder.git
+WORKDIR /opt/piaware_builder
+#RUN  dpkg-buildpackage -b
+RUN ./sensible-build.sh  buster
+WORKDIR /opt/piaware_builder/package-buster
+RUN dpkg-buildpackage -b --no-sign
+
+WORKDIR /opt
+RUN git clone https://github.com/flightaware/tcltls-rebuild.git
+WORKDIR /opt/tcltls-rebuild
+
+
+RUN ./prepare-build.sh buster   
+WORKDIR /opt/tcltls-rebuild/package-buster
+RUN dpkg-buildpackage -b --no-sign
+
+
+FROM base_os as dump1090
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y git build-essential rtl-sdr librtlsdr-dev pkg-config usbutils libbladerf-dev libhackrf-dev liblimesuite-dev libncurses5-dev
+RUN apt-get install -y debhelper
+
+WORKDIR /opt
+RUN git clone https://github.com/flightaware/dump1090.git
+WORKDIR /opt/dump1090
+RUN dpkg-buildpackage -b --no-sign
+
+
+FROM base_os as piaware_web
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y git build-essential   pkg-config  debhelper
+
+WORKDIR /opt
+RUN git clone https://github.com/flightaware/piaware-web.git
+WORKDIR /opt/piaware-web
+RUN dpkg-buildpackage -b --no-sign
+
+
+
+FROM base_os as final
+ENV DEBIAN_FRONTEND=noninteractive
+RUN apt-get update 
+
+COPY --from=build /opt/piaware_builder/piaware_*.deb /tmp/
+COPY --from=build /opt/tcltls-rebuild/tcl-tls_*.deb /tmp/
+COPY --from=dump1090 /opt/dump1090-*.deb /tmp/
+COPY --from=piaware_web /opt/piaware-web_*.deb /tmp/
+
+WORKDIR /tmp
+
+RUN apt-get  install -y  ./tcl-tls_*.deb
+RUN apt-get install -y  ./piaware_*.deb
+RUN apt-get install -y  ./dump1090-*.deb
+RUN apt-get install -y  ./piaware-web_*.deb
+
+
+CMD ["bash", "-c", "lighttpd -f /etc/lighttpd/lighttpd.conf && piaware -statusfile /run/piaware/status.json"]

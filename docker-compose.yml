@@ -1,0 +1,28 @@
+version: "2"
+
+services:
+  dump_1090:
+    build: dump_1090
+    privileged: true
+    restart: always
+    network_mode: host
+    volumes:
+      - 'dump_1090_status:/run/dump1090-fa/'
+    ports:
+      - "30001:30001"
+      - "30002:30002"
+      - "30003:30003"
+  piaware:
+    build: piaware
+    privileged: true
+    restart: always
+    network_mode: host
+    volumes:
+      - 'piaware:/var/cache/piaware/'
+      - 'piaware_status:/run/piaware/'
+      - 'dump_1090_status:/run/dump1090-fa/'
+
+volumes:
+  piaware:
+  piaware_status:
+  dump_1090_status:
