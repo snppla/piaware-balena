@@ -63,4 +63,4 @@ RUN apt-get install -y  ./dump1090-*.deb
 RUN apt-get install -y  ./piaware-web_*.deb
 
 
-CMD ["bash", "-c", "lighttpd -f /etc/lighttpd/lighttpd.conf && piaware -statusfile /run/piaware/status.json"]
+CMD ["bash", "-c", "lighttpd -f /etc/lighttpd/lighttpd.conf && if [[ ${FEEDER_ID} ]]; then echo $FEEDER_ID > /var/cache/piaware/feeder_id; fi && piaware -statusfile /run/piaware/status.json"]
