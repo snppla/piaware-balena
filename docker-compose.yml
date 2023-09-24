@@ -21,6 +21,11 @@ services:
       - 'piaware:/var/cache/piaware/'
       - 'piaware_status:/run/piaware/'
       - 'dump_1090_status:/run/dump1090-fa/'
+  fr24:
+    build: fr24
+    privileged: true
+    restart: always
+    network_mode: host
 
 volumes:
   piaware:
